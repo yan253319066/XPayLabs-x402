@@ -1,0 +1,6 @@
+export { pay } from './pay'
+export { XPayClient } from './client'
+export { XPayError } from './error'
+export { signers } from './signers/index'
+export type { PayOptions, PayResponse, RequestOptions } from './types'
+export { Signer } from './types'
