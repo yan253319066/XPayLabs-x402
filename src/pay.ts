@@ -1,4 +1,4 @@
-import { x402Client } from '@x402/core/client'
+import { x402Client, x402HTTPClient } from '@x402/core/client'
 import { wrapFetchWithPayment } from '@x402/fetch'
 import { ExactEvmScheme, UptoEvmScheme } from '@x402/evm'
 import type { PayOptions, PayResponse } from './types'
@@ -19,8 +19,22 @@ export async function pay<T = any>(url: string, options: PayOptions): Promise<Pa
     .register('eip155:*', new ExactEvmScheme(evmSigner))
     .register('eip155:*', new UptoEvmScheme(evmSigner))
 
+  const httpClient = new x402HTTPClient(client)
+
+  if (options.hooks?.onBeforePayment) {
+    const hook = options.hooks.onBeforePayment
+    httpClient.onPaymentRequired(async (ctx) => {
+      const req = ctx.paymentRequired.accepts[0]
+      if (!req) return
+      const result = await hook({ amount: req.amount, network: req.network })
+      if (result?.abort) {
+        throw new XPayError(result.reason ?? 'Payment aborted by onBeforePayment hook', 'PAYMENT_FAILED')
+      }
+    })
+  }
+
   const fetchFn = typeof globalThis !== 'undefined' ? globalThis.fetch : fetch
-  const fetchWithPayment = wrapFetchWithPayment(fetchFn, client)
+  const fetchWithPayment = wrapFetchWithPayment(fetchFn, httpClient)
 
   let response: Response
   try {
@@ -35,6 +49,11 @@ export async function pay<T = any>(url: string, options: PayOptions): Promise<Pa
       `Payment request failed: ${err instanceof Error ? err.message : String(err)}`,
       'NETWORK_ERROR',
     )
+  }
+
+  if (options.hooks?.onAfterPayment) {
+    const txId = response.headers.get('x-payment-id') ?? undefined
+    await options.hooks.onAfterPayment({ transaction: txId })
   }
 
   const data: T = await response.json().catch(() => null as unknown as T)

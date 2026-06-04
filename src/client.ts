@@ -1,4 +1,4 @@
-import { x402Client } from '@x402/core/client'
+import { x402Client, x402HTTPClient } from '@x402/core/client'
 import { wrapFetchWithPayment } from '@x402/fetch'
 import { ExactEvmScheme, UptoEvmScheme } from '@x402/evm'
 import type { PayResponse, RequestOptions } from './types'
@@ -33,14 +33,15 @@ export class XPayClient {
         .register('eip155:*', new ExactEvmScheme(this.evmSigner!))
         .register('eip155:*', new UptoEvmScheme(this.evmSigner!))
 
+      const httpClient = new x402HTTPClient(client)
       const fetchFn = typeof globalThis !== 'undefined' ? globalThis.fetch : fetch
-      this.fetchWithPayment = wrapFetchWithPayment(fetchFn, client)
+      this.fetchWithPayment = wrapFetchWithPayment(fetchFn, httpClient)
     })()
 
     return this.initPromise
   }
 
-  private async request<T>(url: string, options: RequestOptions = {}): Promise<PayResponse<T>> {
+  async request<T>(url: string, options: RequestOptions = {}): Promise<PayResponse<T>> {
     await this.ensureInitialized()
 
     let response: Response

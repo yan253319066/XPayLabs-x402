@@ -1,7 +1,9 @@
 import type { ClientEvmSigner } from '@x402/evm'
 
+export type Chain = 'evm'
+
 export class Signer {
-  readonly chain: 'evm' = 'evm'
+  readonly chain: Chain = 'evm'
 
   constructor(private _getAccount: () => Promise<ClientEvmSigner>) {}
 
