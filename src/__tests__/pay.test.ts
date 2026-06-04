@@ -57,8 +57,8 @@ describe('pay', () => {
 
   it('uses custom method and headers', async () => {
     let capturedRequest: Request | null = null
-    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
-      capturedRequest = input instanceof Request ? input : new Request(input, init)
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      capturedRequest = input instanceof Request ? input : new Request(input)
       return Promise.resolve(
         new Response(JSON.stringify({}), { status: 200, headers: new Headers() }),
       )
@@ -74,6 +74,54 @@ describe('pay', () => {
 
     expect(capturedRequest!.method).toBe('POST')
     expect(capturedRequest!.headers.get('Content-Type')).toBe('application/json')
+    vi.unstubAllGlobals()
+  })
+
+  it('returns null data on non-JSON response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('not json', { status: 200, headers: new Headers() }),
+      ),
+    )
+
+    const result = await pay('https://example.com/api', { signer: mockSigner })
+    expect(result.data).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('calls onAfterPayment when x-payment-id header present', async () => {
+    const headers = new Headers({ 'x-payment-id': 'tx_abc' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({}), { status: 200, headers }),
+      ),
+    )
+
+    const onAfterPayment = vi.fn()
+    await pay('https://example.com/api', {
+      signer: mockSigner,
+      hooks: { onAfterPayment },
+    })
+    expect(onAfterPayment).toHaveBeenCalledWith({ transaction: 'tx_abc' })
+    vi.unstubAllGlobals()
+  })
+
+  it('calls onAfterPayment without transaction when header missing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({}), { status: 200, headers: new Headers() }),
+      ),
+    )
+
+    const onAfterPayment = vi.fn()
+    await pay('https://example.com/api', {
+      signer: mockSigner,
+      hooks: { onAfterPayment },
+    })
+    expect(onAfterPayment).toHaveBeenCalledWith({ transaction: undefined })
     vi.unstubAllGlobals()
   })
 })

@@ -129,25 +129,34 @@ function pay<T = any>(
 
 ```typescript
 // 内部实现（使用 @x402/fetch）
-import { wrapFetchWithPaymentFromConfig } from '@x402/fetch'
-import { x402ClientFromConfig } from '@x402/core'
+import { x402Client, x402HTTPClient } from '@x402/core/client'
+import { wrapFetchWithPayment } from '@x402/fetch'
 import { ExactEvmScheme, UptoEvmScheme } from '@x402/evm'
 
 async function pay<T>(url: string, options: PayOptions): Promise<PayResponse<T>> {
-  const client = x402ClientFromConfig({
-    facilitatorUrl: options.facilitatorUrl ?? 'https://x402.org/facilitator'
-  })
-  client.register('eip155:*', new ExactEvmScheme())
-  client.register('eip155:*', new UptoEvmScheme())
+  const evmSigner = await options.signer.getClientEvmSigner()
 
-  const fetchWithPayment = wrapFetchWithPaymentFromConfig(client, options.signer)
+  const client = new x402Client()
+    .register('eip155:*', new ExactEvmScheme(evmSigner))
+    .register('eip155:*', new UptoEvmScheme(evmSigner))
+
+  const httpClient = new x402HTTPClient(client)
 
   if (options.hooks?.onBeforePayment) {
-    // 注册 onBeforePayment 到 x402 lifecycle hooks
+    httpClient.onPaymentRequired(async (ctx) => {
+      const req = ctx.paymentRequired.accepts[0]
+      if (!req) return
+      const result = await options.hooks!.onBeforePayment!({
+        amount: req.amount,
+        network: req.network,
+      })
+      if (result?.abort) {
+        throw new Error(result.reason ?? 'Payment aborted')
+      }
+    })
   }
-  if (options.hooks?.onAfterPayment) {
-    // 注册 onAfterPayment 到 x402 lifecycle hooks
-  }
+
+  const fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, httpClient)
 
   const response = await fetchWithPayment(url, {
     method: options.method ?? 'GET',
@@ -155,7 +164,12 @@ async function pay<T>(url: string, options: PayOptions): Promise<PayResponse<T>>
     body: options.body,
   })
 
-  const data = await response.json()
+  if (options.hooks?.onAfterPayment) {
+    const txId = response.headers.get('x-payment-id') ?? undefined
+    await options.hooks.onAfterPayment({ transaction: txId })
+  }
+
+  const data = await response.json().catch(() => null)
   return {
     data,
     status: response.status,
@@ -231,14 +245,14 @@ async function fetchWithRetry(url: string, maxRetries = 3) {
 ### 3.2 `signers.*` — 签名器工厂
 
 ```typescript
+type Chain = 'evm'  // v0.1 仅 EVM，v0.2 扩展 'solana'
+
 // 签名
 interface Signers {
   fromPrivateKey(key: string): Signer
   fromMnemonic(phrase: string, options?: { chain?: Chain }): Signer
-  browserWallet(provider: any): Signer
+  browserWallet(provider: EIP1193Provider): Signer
 }
-
-type Chain = 'evm'  // v0.1 仅 EVM，v0.2 扩展 'solana'
 ```
 
 ```typescript
@@ -262,7 +276,7 @@ const s3 = signers.browserWallet(window.ethereum)
 ```typescript
 // 签名
 class XPayClient {
-  constructor(config: { signer: Signer; facilitatorUrl?: string })
+  constructor(config: { signer: Signer })
 
   get<T>(url: string, options?: RequestOptions): Promise<PayResponse<T>>
   post<T>(url: string, options?: RequestOptions): Promise<PayResponse<T>>
@@ -308,10 +322,14 @@ app.get('/proxy/ai-completion', async (req, res) => {
 ### 3.4 类型定义
 
 ```typescript
-/** @internal 签名器接口 — 所有 signers.* 工厂都返回此类型 */
-interface Signer {
-  readonly chain: 'evm'
+/** 签名器 — 所有 signers.* 工厂都返回此类实例 */
+class Signer {
+  readonly chain: 'evm' = 'evm'
+  /** @internal */
+  getClientEvmSigner(): Promise<ClientEvmSigner>
 }
+
+type Chain = 'evm'
 
 interface PayOptions {
   /** 签名器（必填），通过 signers.* 工厂创建 */
@@ -322,8 +340,6 @@ interface PayOptions {
   headers?: Record<string, string>
   /** 请求体 */
   body?: BodyInit | null
-  /** Facilitator URL，默认使用 x402.org 公共 facilitator */
-  facilitatorUrl?: string
   /** 支付生命周期钩子（高级功能） */
   hooks?: {
     onBeforePayment?: (ctx: { amount: string; network: string }) => Promise<{ abort?: boolean; reason?: string } | void>
@@ -591,16 +607,11 @@ const result = await pay(url, {
 
 ### 5.3 自定义 Facilitator
 
-默认使用 x402.org 公共 facilitator（测试网免费）。生产环境可指定 CDP 等：
+Facilitator 由服务端（卖家）配置，买家 SDK 无需指定。公共测试网 facilitator 由 x402.org 提供（免费）。
 
-```typescript
-const result = await pay(url, {
-  signer,
-  facilitatorUrl: 'https://api.cdp.coinbase.com/platform/v2/x402'
-})
-```
+生产环境可向支持 x402 的服务商（CDP、PayAI、Corbits、Dexter、Mogami 等 8+ 个）购买或自建 facilitator。
 
-支持的 Facilitator: CDP、PayAI、Corbits、Dexter、Mogami 等 8+ 个。
+买家通过 `pay()` 调用时，facilitator URL 由服务端返回的 402 响应自动决定。
 
 ### 5.4 多链扩展
 

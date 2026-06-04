@@ -1,9 +1,13 @@
 import { Signer } from '../types'
 import type { ClientEvmSigner } from '@x402/evm'
 
-export function browserWallet(provider: any): Signer {
+interface EIP1193Provider {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>
+}
+
+export function browserWallet(provider: EIP1193Provider): Signer {
   return new Signer(async (): Promise<ClientEvmSigner> => {
-    const accounts: string[] = await provider.request({ method: 'eth_requestAccounts' })
+    const accounts = (await provider.request({ method: 'eth_requestAccounts' })) as string[]
     const address = accounts[0] as `0x${string}`
     return {
       address,
@@ -11,7 +15,7 @@ export function browserWallet(provider: any): Signer {
         return provider.request({
           method: 'eth_signTypedData_v4',
           params: [address, JSON.stringify(message)],
-        })
+        }) as Promise<`0x${string}`>
       },
     }
   })

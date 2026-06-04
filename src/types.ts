@@ -7,7 +7,6 @@ export class Signer {
 
   constructor(private _getAccount: () => Promise<ClientEvmSigner>) {}
 
-  /** @internal */
   getClientEvmSigner(): Promise<ClientEvmSigner> {
     return this._getAccount()
   }
@@ -18,7 +17,6 @@ export interface PayOptions {
   method?: string
   headers?: Record<string, string>
   body?: BodyInit | null
-  facilitatorUrl?: string
   hooks?: {
     onBeforePayment?: (ctx: { amount: string; network: string }) => Promise<{ abort?: boolean; reason?: string } | void>
     onAfterPayment?: (ctx: { transaction?: string }) => Promise<void>
@@ -28,7 +26,7 @@ export interface PayOptions {
 export type RequestOptions = Omit<PayOptions, 'signer'>
 
 export interface PayResponse<T = any> {
-  data: T
+  data: T | null
   status: number
   ok: boolean
   statusText: string

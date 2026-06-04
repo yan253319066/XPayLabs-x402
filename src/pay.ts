@@ -33,8 +33,7 @@ export async function pay<T = any>(url: string, options: PayOptions): Promise<Pa
     })
   }
 
-  const fetchFn = typeof globalThis !== 'undefined' ? globalThis.fetch : fetch
-  const fetchWithPayment = wrapFetchWithPayment(fetchFn, httpClient)
+  const fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, httpClient)
 
   let response: Response
   try {
@@ -56,7 +55,7 @@ export async function pay<T = any>(url: string, options: PayOptions): Promise<Pa
     await options.hooks.onAfterPayment({ transaction: txId })
   }
 
-  const data: T = await response.json().catch(() => null as unknown as T)
+  const data = await response.json().catch(() => null)
 
   return {
     data,

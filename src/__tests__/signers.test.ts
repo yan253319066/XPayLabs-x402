@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { signers } from '../signers/index'
+import { XPayError } from '../error'
 
 const PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+const PRIVATE_KEY_NO_PREFIX = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 const EXPECTED_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 const MNEMONIC = 'test test test test test test test test test test test junk'
 
@@ -13,6 +15,12 @@ describe('signers.fromPrivateKey', () => {
 
   it('returns correct address', async () => {
     const signer = signers.fromPrivateKey(PRIVATE_KEY)
+    const account = await signer.getClientEvmSigner()
+    expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
+  })
+
+  it('auto-adds 0x prefix if missing', async () => {
+    const signer = signers.fromPrivateKey(PRIVATE_KEY_NO_PREFIX)
     const account = await signer.getClientEvmSigner()
     expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
   })
@@ -46,6 +54,11 @@ describe('signers.fromMnemonic', () => {
     const signer = signers.fromMnemonic(MNEMONIC)
     const account = await signer.getClientEvmSigner()
     expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
+  })
+
+  it('throws on unsupported chain', () => {
+    expect(() => signers.fromMnemonic(MNEMONIC, { chain: 'solana' as any })).toThrow(XPayError)
+    expect(() => signers.fromMnemonic(MNEMONIC, { chain: 'solana' as any })).toThrow(/Unsupported chain/)
   })
 
   it('has signTypedData function', async () => {

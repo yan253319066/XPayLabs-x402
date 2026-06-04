@@ -32,10 +32,7 @@ describe('XPayClient', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ users: [] }), {
-          status: 200,
-          headers: new Headers(),
-        }),
+        new Response(JSON.stringify({ users: [] }), { status: 200, headers: new Headers() }),
       ),
     )
 
@@ -43,7 +40,6 @@ describe('XPayClient', () => {
     const result = await client.get('https://example.com/users')
     expect(result.ok).toBe(true)
     expect(result.data).toEqual({ users: [] })
-
     vi.unstubAllGlobals()
   })
 
@@ -51,10 +47,7 @@ describe('XPayClient', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ id: 1 }), {
-          status: 201,
-          headers: new Headers(),
-        }),
+        new Response(JSON.stringify({ id: 1 }), { status: 201, headers: new Headers() }),
       ),
     )
 
@@ -64,7 +57,36 @@ describe('XPayClient', () => {
     })
     expect(result.status).toBe(201)
     expect(result.data).toEqual({ id: 1 })
+    vi.unstubAllGlobals()
+  })
 
+  it('returns data on PUT', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ updated: true }), { status: 200, headers: new Headers() }),
+      ),
+    )
+
+    const client = new XPayClient({ signer: mockSigner })
+    const result = await client.put('https://example.com/resource/1')
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({ updated: true })
+    vi.unstubAllGlobals()
+  })
+
+  it('returns data on DELETE', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ deleted: true }), { status: 200, headers: new Headers() }),
+      ),
+    )
+
+    const client = new XPayClient({ signer: mockSigner })
+    const result = await client.delete('https://example.com/resource/1')
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({ deleted: true })
     vi.unstubAllGlobals()
   })
 
@@ -72,15 +94,12 @@ describe('XPayClient', () => {
     const headers = new Headers({ 'x-payment-id': 'tx_123' })
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({}), { status: 200, headers }),
-      ),
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200, headers })),
     )
 
     const client = new XPayClient({ signer: mockSigner })
     const result = await client.get('https://example.com/paid')
     expect(result.paymentSettled).toBe(true)
-
     vi.unstubAllGlobals()
   })
 
@@ -95,7 +114,32 @@ describe('XPayClient', () => {
     await client.get('https://example.com/b')
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.unstubAllGlobals()
+  })
 
+  it('calls onAfterPayment when header present', async () => {
+    const headers = new Headers({ 'x-payment-id': 'tx_abc' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200, headers })),
+    )
+
+    const onAfterPayment = vi.fn()
+    const client = new XPayClient({ signer: mockSigner })
+    await client.get('https://example.com/paid', { hooks: { onAfterPayment } })
+    expect(onAfterPayment).toHaveBeenCalledWith({ transaction: 'tx_abc' })
+    vi.unstubAllGlobals()
+  })
+
+  it('returns null data on non-JSON response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('not json', { status: 200, headers: new Headers() })),
+    )
+
+    const client = new XPayClient({ signer: mockSigner })
+    const result = await client.get('https://example.com/raw')
+    expect(result.data).toBeNull()
     vi.unstubAllGlobals()
   })
 })
