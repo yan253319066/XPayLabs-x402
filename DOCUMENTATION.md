@@ -216,14 +216,6 @@ const result = await pay(url, {
 ```
 
 ```typescript
-// 自定义 Facilitator
-const result = await pay(url, {
-  signer,
-  facilitatorUrl: 'https://api.cdp.coinbase.com/platform/v2/x402'
-})
-```
-
-```typescript
 // 错误处理与重试
 import { XPayError } from 'xpaylabs-x402'
 

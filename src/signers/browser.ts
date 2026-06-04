@@ -8,6 +8,9 @@ interface EIP1193Provider {
 export function browserWallet(provider: EIP1193Provider): Signer {
   return new Signer(async (): Promise<ClientEvmSigner> => {
     const accounts = (await provider.request({ method: 'eth_requestAccounts' })) as string[]
+    if (!accounts[0]) {
+      throw new Error('Browser wallet returned no accounts. Ensure the wallet is unlocked and connected.')
+    }
     const address = accounts[0] as `0x${string}`
     return {
       address,

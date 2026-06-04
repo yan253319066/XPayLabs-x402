@@ -90,6 +90,39 @@ describe('pay', () => {
     vi.unstubAllGlobals()
   })
 
+  it('throws PAYMENT_FAILED when onBeforePayment aborts', async () => {
+    const paymentBody = {
+      x402Version: 1,
+      accepts: [{
+        scheme: 'exact',
+        network: 'eip155:84532',
+        maxAmountRequired: '100000',
+        resource: 'https://example.com/api',
+        description: 'API access',
+        payTo: '0xA0b86991c6218b363c1dD23eF78c7c555b944437',
+        maxTimeoutSeconds: 3600,
+        asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      }],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(paymentBody), { status: 402, headers: new Headers() }),
+      ),
+    )
+
+    await expect(
+      pay('https://example.com/api', {
+        signer: mockSigner,
+        hooks: {
+          onBeforePayment: () => Promise.resolve({ abort: true, reason: 'user cancelled' }),
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'PAYMENT_FAILED' })
+
+    vi.unstubAllGlobals()
+  })
+
   it('calls onAfterPayment when x-payment-id header present', async () => {
     const headers = new Headers({ 'x-payment-id': 'tx_abc' })
     vi.stubGlobal(

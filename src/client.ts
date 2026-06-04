@@ -7,17 +7,17 @@ import { XPayError } from './error'
 
 export class XPayClient {
   private evmSigner: Awaited<ReturnType<Signer['getClientEvmSigner']>> | null = null
-  private fetchWithPayment: ReturnType<typeof wrapFetchWithPayment> | null = null
+  private x402: x402Client | null = null
+  private baseFetchWithPayment: ReturnType<typeof wrapFetchWithPayment> | null = null
   private initPromise: Promise<void> | null = null
   private signer: Signer
-  private currentHooks: PayOptions['hooks'] | undefined
 
   constructor(config: { signer: Signer }) {
     this.signer = config.signer
   }
 
   private async ensureInitialized(): Promise<void> {
-    if (this.fetchWithPayment) return
+    if (this.x402) return
     if (this.initPromise) return this.initPromise
 
     this.initPromise = (async () => {
@@ -30,35 +30,38 @@ export class XPayClient {
         )
       }
 
-      const client = new x402Client()
+      this.x402 = new x402Client()
         .register('eip155:*', new ExactEvmScheme(this.evmSigner!))
         .register('eip155:*', new UptoEvmScheme(this.evmSigner!))
 
-      const httpClient = new x402HTTPClient(client)
-      httpClient.onPaymentRequired(async (ctx) => {
-        const hooks = this.currentHooks
-        if (!hooks?.onBeforePayment) return
-        const req = ctx.paymentRequired.accepts[0]
-        if (!req) return
-        const result = await hooks.onBeforePayment({ amount: req.amount, network: req.network })
-        if (result?.abort) {
-          throw new XPayError(result.reason ?? 'Payment aborted by onBeforePayment hook', 'PAYMENT_FAILED')
-        }
-      })
-
-      this.fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, httpClient)
+      const httpClient = new x402HTTPClient(this.x402)
+      this.baseFetchWithPayment = wrapFetchWithPayment(globalThis.fetch, httpClient)
     })()
 
     return this.initPromise
   }
 
   async request<T>(url: string, options: RequestOptions = {}): Promise<PayResponse<T>> {
-    this.currentHooks = options.hooks
     await this.ensureInitialized()
+
+    let fetchWithPayment = this.baseFetchWithPayment!
+
+    if (options.hooks?.onBeforePayment) {
+      const httpClient = new x402HTTPClient(this.x402!)
+      httpClient.onPaymentRequired(async (ctx) => {
+        const req = ctx.paymentRequired.accepts[0]
+        if (!req) return
+        const result = await options.hooks!.onBeforePayment!({ amount: req.amount, network: req.network })
+        if (result?.abort) {
+          throw new XPayError(result.reason ?? 'Payment aborted by onBeforePayment hook', 'PAYMENT_FAILED')
+        }
+      })
+      fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, httpClient)
+    }
 
     let response: Response
     try {
-      response = await this.fetchWithPayment!(url, {
+      response = await fetchWithPayment(url, {
         method: options.method ?? 'GET',
         headers: options.headers as Record<string, string>,
         body: options.body as BodyInit | undefined,
