@@ -1,42 +1,13 @@
 > [English Docs](./README.md)
 
-# xpaylabs-x402 — HTTP 402 微支付买家 SDK
+# @xpaylabs/x402 — HTTP 402 微支付买家 SDK
 
-[XPayLabs](https://github.com/yan253319066/XPayLabs-x402)（简称 **xpay**）让开发者用一行代码支付任意 x402 兼容的 HTTP API，结算使用 USDC，免去传统支付的商户对接和 KYC 成本。
+npm install @xpaylabs/x402
 
-```bash
-npm install xpaylabs-x402
-```
+```javascript
+import { pay, signers } from '@xpaylabs/x402'
 
-```typescript
-import { pay, signers } from 'xpaylabs-x402'
-
-const signer = signers.fromPrivateKey(process.env.PRIVATE_KEY)
-const result = await pay('https://api.example.com/paid-endpoint', { signer })
-
-console.log(result.data)       // 响应数据
-console.log(result.paymentId)  // 链上交易 ID（有则表示已结算）
-```
-
-## 适用人群
-
-| 角色 | 使用方式 |
-|------|----------|
-| **AI Agent 开发者** | Agent 动态调用付费 LLM、数据源、工具 — 无需预配 API Key |
-| **Node.js 后端开发者** | 无需商户资质或 KYC，直接调用第三方付费 API |
-| **浏览器 dApp 开发者** | 用户通过 MetaMask 为高级功能或计算资源付费 |
-| **自动化脚本开发者** | 爬虫、监控、CI/CD 按次付费调用 |
-| **SaaS 平台** | 将 x402 作为 API 市场计的账层集成 |
-
-## 使用场景
-
-- **AI / LLM**：Agent 调用付费 LLM 端点，按 token 用量用 USDC 结算，无需管理 API Key
-- **数据 API**：金融数据、天气、地理位置、市场研究的按查询付费
-- **计算资源**：图片生成、视频处理、ML 模型推理的按次收费
-- **内容付费**：付费文章、报告、媒体文件的按次查看
-- **基础设施**：DNS、CDN、监控等 API 的按请求付费
-
-## 为什么用 xpaylabs-x402？
+## 为什么用 @xpaylabs/x402？
 
 | 痛点 | xpay 方案 |
 |------|-----------|
@@ -50,7 +21,7 @@ console.log(result.paymentId)  // 链上交易 ID（有则表示已结算）
 ### 1. 创建签名器
 
 ```typescript
-import { signers } from 'xpaylabs-x402'
+import { signers } from '@xpaylabs/x402'
 
 // 服务端：私钥签名（0x 前缀可选）
 const signer = signers.fromPrivateKey(process.env.PRIVATE_KEY)
@@ -158,7 +129,7 @@ async function pay<T = any>(
 ### signers
 
 ```typescript
-import { signers } from 'xpaylabs-x402'
+import { signers } from '@xpaylabs/x402'
 
 signers.fromPrivateKey(key: string): Signer
 signers.fromMnemonic(phrase: string, options?: { chain?: Chain }): Signer
@@ -262,9 +233,9 @@ interface PayOptions {
 ```bash
 npm install xpaylabs-x402
 # 或
-yarn add xpaylabs-x402
-# 或
-pnpm add xpaylabs-x402
+yarn add @xpaylabs/x402
+
+pnpm add @xpaylabs/x402
 ```
 
 ## 链接

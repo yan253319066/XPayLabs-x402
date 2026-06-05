@@ -1,42 +1,8 @@
 > [中文文档](./README.zh-CN.md)
 
-# xpaylabs-x402 — Buyer SDK for HTTP 402 Micropayments
+# @xpaylabs/x402 — Buyer SDK for HTTP 402 Micropayments
 
-[XPayLabs](https://github.com/yan253319066/XPayLabs-x402) (short: **xpay**) provides a one-line buyer SDK for the [x402 protocol](https://docs.x402.org). Pay any HTTP API with USDC — no KYC, no merchant account, no bank integration.
-
-```bash
-npm install xpaylabs-x402
-```
-
-```typescript
-import { pay, signers } from 'xpaylabs-x402'
-
-const signer = signers.fromPrivateKey(process.env.PRIVATE_KEY)
-const result = await pay('https://api.example.com/paid-endpoint', { signer })
-
-console.log(result.data)       // JSON response body
-console.log(result.paymentId)  // on-chain tx hash (present = settled)
-```
-
-## Who Is This For?
-
-| Role | How They Use It |
-|------|----------------|
-| **AI Agents** | Pay for LLM APIs, data sources, and tool executions on the fly — no pre-funded API keys needed |
-| **Node.js Backend Developers** | Call paid third-party APIs without merchant accounts or KYC |
-| **Browser dApp Developers** | Let users pay with MetaMask for premium content or compute |
-| **Automation Scripts** | Pay per-call for scrapers, monitors, and CI/CD pipelines |
-| **SaaS Platforms** | Integrate x402 as a billing layer for your own API marketplace |
-
-## Use Cases
-
-- **AI / LLM**: An agent calls a paid LLM endpoint, pays per-token with USDC, no API key management
-- **Data APIs**: Pay-per-query for financial data, weather, geolocation, or market research APIs
-- **Compute**: Pay per-inference for image generation, video processing, or ML model serving
-- **Content**: Pay-per-view for premium articles, reports, or media files
-- **Infrastructure**: Pay per-request for DNS, CDN, or monitoring APIs
-
-## Why xpaylabs-x402?
+## Why @xpaylabs/x402?
 
 | Problem | xpay solution |
 |---------|---------------|
@@ -50,7 +16,7 @@ console.log(result.paymentId)  // on-chain tx hash (present = settled)
 ### 1. Create a Signer
 
 ```typescript
-import { signers } from 'xpaylabs-x402'
+import { signers } from '@xpaylabs/x402'
 
 // Server-side: private key (0x prefix optional)
 const signer = signers.fromPrivateKey(process.env.PRIVATE_KEY)
@@ -158,7 +124,7 @@ async function pay<T = any>(
 ### signers
 
 ```typescript
-import { signers } from 'xpaylabs-x402'
+import { signers } from '@xpaylabs/x402'
 
 signers.fromPrivateKey(key: string): Signer
 signers.fromMnemonic(phrase: string, options?: { chain?: Chain }): Signer
@@ -262,9 +228,9 @@ If the server returns 200, the SDK returns the data directly — no payment flow
 ```bash
 npm install xpaylabs-x402
 # or
-yarn add xpaylabs-x402
-# or
-pnpm add xpaylabs-x402
+yarn add @xpaylabs/x402
+
+pnpm add @xpaylabs/x402
 ```
 
 ## Links
