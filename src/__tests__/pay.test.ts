@@ -4,20 +4,18 @@ import { XPayError } from '../error'
 import { Signer } from '../types'
 import type { ClientEvmSigner } from '@x402/evm'
 
-const mockSigner = new Signer(() =>
-  Promise.resolve({
-    address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-    signTypedData: vi.fn(),
-  } as unknown as ClientEvmSigner),
-)
+const mockSigner = new Signer({
+  address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+  signTypedData: vi.fn(),
+} as unknown as ClientEvmSigner)
 
 describe('pay', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('throws INVALID_SIGNER when signer init fails', async () => {
-    const badSigner = new Signer(() => Promise.reject(new Error('wallet locked')))
+  it('throws INVALID_SIGNER when signer has no address', async () => {
+    const badSigner = new Signer({} as unknown as ClientEvmSigner)
     await expect(pay('https://example.com/api', { signer: badSigner })).rejects.toThrow(XPayError)
     await expect(pay('https://example.com/api', { signer: badSigner })).rejects.toMatchObject({
       code: 'INVALID_SIGNER',
@@ -48,10 +46,10 @@ describe('pay', () => {
     )
 
     const result = await pay('https://example.com/api', { signer: mockSigner })
-    expect(result.ok).toBe(true)
-    expect(result.status).toBe(200)
+    expect(result.response.ok).toBe(true)
+    expect(result.response.status).toBe(200)
     expect(result.data).toEqual(responseBody)
-    expect(result.paymentSettled).toBe(false)
+    expect(result.paymentId).toBeUndefined()
     vi.unstubAllGlobals()
   })
 
@@ -67,14 +65,26 @@ describe('pay', () => {
 
     await pay('https://example.com/api', {
       signer: mockSigner,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: 'hello' }),
+      request: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'hello' }),
+      },
     })
 
     expect(capturedRequest!.method).toBe('POST')
     expect(capturedRequest!.headers.get('Content-Type')).toBe('application/json')
     vi.unstubAllGlobals()
+  })
+
+  it('uses custom fetchFn', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200, headers: new Headers() }),
+    )
+
+    const result = await pay('https://example.com/api', { signer: mockSigner, fetchFn })
+    expect(result.data).toEqual({ ok: true })
+    expect(fetchFn).toHaveBeenCalled()
   })
 
   it('returns null data on non-JSON response', async () => {
@@ -90,7 +100,7 @@ describe('pay', () => {
     vi.unstubAllGlobals()
   })
 
-  it('throws PAYMENT_FAILED when onBeforePayment aborts', async () => {
+  it('throws HOOK_ABORTED when onBeforePayment aborts', async () => {
     const paymentBody = {
       x402Version: 1,
       accepts: [{
@@ -118,7 +128,7 @@ describe('pay', () => {
           onBeforePayment: () => Promise.resolve({ abort: true, reason: 'user cancelled' }),
         },
       }),
-    ).rejects.toMatchObject({ code: 'PAYMENT_FAILED' })
+    ).rejects.toMatchObject({ code: 'HOOK_ABORTED' })
 
     vi.unstubAllGlobals()
   })

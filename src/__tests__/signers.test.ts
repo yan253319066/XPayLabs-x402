@@ -13,27 +13,25 @@ describe('signers.fromPrivateKey', () => {
     expect(signer.chain).toBe('evm')
   })
 
-  it('returns correct address', async () => {
+  it('returns correct address', () => {
     const signer = signers.fromPrivateKey(PRIVATE_KEY)
-    const account = await signer.getClientEvmSigner()
-    expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
+    expect(signer.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
   })
 
-  it('auto-adds 0x prefix if missing', async () => {
+  it('auto-adds 0x prefix if missing', () => {
     const signer = signers.fromPrivateKey(PRIVATE_KEY_NO_PREFIX)
-    const account = await signer.getClientEvmSigner()
-    expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
+    expect(signer.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
   })
 
-  it('has signTypedData function', async () => {
+  it('provides a ClientEvmSigner via getClientEvmSigner', () => {
     const signer = signers.fromPrivateKey(PRIVATE_KEY)
-    const account = await signer.getClientEvmSigner()
+    const account = signer.getClientEvmSigner()
     expect(typeof account.signTypedData).toBe('function')
   })
 
   it('can sign typed data', async () => {
     const signer = signers.fromPrivateKey(PRIVATE_KEY)
-    const account = await signer.getClientEvmSigner()
+    const account = signer.getClientEvmSigner()
     const sig = await account.signTypedData({
       domain: { name: 'Test', version: '1', chainId: 1 },
       types: { Test: [{ name: 'value', type: 'uint256' }] },
@@ -50,10 +48,9 @@ describe('signers.fromMnemonic', () => {
     expect(signer.chain).toBe('evm')
   })
 
-  it('derives the correct default address', async () => {
+  it('derives the correct default address', () => {
     const signer = signers.fromMnemonic(MNEMONIC)
-    const account = await signer.getClientEvmSigner()
-    expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
+    expect(signer.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
   })
 
   it('throws on unsupported chain', () => {
@@ -61,27 +58,26 @@ describe('signers.fromMnemonic', () => {
     expect(() => signers.fromMnemonic(MNEMONIC, { chain: 'solana' as any })).toThrow(/Unsupported chain/)
   })
 
-  it('has signTypedData function', async () => {
+  it('provides a ClientEvmSigner via getClientEvmSigner', () => {
     const signer = signers.fromMnemonic(MNEMONIC)
-    const account = await signer.getClientEvmSigner()
+    const account = signer.getClientEvmSigner()
     expect(typeof account.signTypedData).toBe('function')
   })
 })
 
 describe('signers.browserWallet', () => {
-  it('returns a signer with chain evm', () => {
-    const provider = { request: vi.fn() }
-    const signer = signers.browserWallet(provider)
+  it('returns a signer with chain evm', async () => {
+    const provider = { request: vi.fn().mockResolvedValue([EXPECTED_ADDRESS]) }
+    const signer = await signers.browserWallet(provider)
     expect(signer.chain).toBe('evm')
   })
 
-  it('requests accounts from provider on getClientEvmSigner', async () => {
+  it('requests accounts from provider', async () => {
     const request = vi.fn().mockResolvedValue([EXPECTED_ADDRESS])
     const provider = { request }
-    const signer = signers.browserWallet(provider)
-    const account = await signer.getClientEvmSigner()
+    const signer = await signers.browserWallet(provider)
     expect(request).toHaveBeenCalledWith({ method: 'eth_requestAccounts' })
-    expect(account.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
+    expect(signer.address.toLowerCase()).toBe(EXPECTED_ADDRESS.toLowerCase())
   })
 
   it('signs typed data via provider', async () => {
@@ -89,8 +85,8 @@ describe('signers.browserWallet', () => {
     request.mockResolvedValueOnce([EXPECTED_ADDRESS])
     request.mockResolvedValueOnce('0xdead')
     const provider = { request }
-    const signer = signers.browserWallet(provider)
-    const account = await signer.getClientEvmSigner()
+    const signer = await signers.browserWallet(provider)
+    const account = signer.getClientEvmSigner()
     const sig = await account.signTypedData({
       domain: { name: 'Test', version: '1', chainId: 1 },
       types: { Test: [{ name: 'value', type: 'string' }] },

@@ -4,12 +4,10 @@ import { XPayError } from '../error'
 import { Signer } from '../types'
 import type { ClientEvmSigner } from '@x402/evm'
 
-const mockSigner = new Signer(() =>
-  Promise.resolve({
-    address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-    signTypedData: vi.fn(),
-  } as unknown as ClientEvmSigner),
-)
+const mockSigner = new Signer({
+  address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+  signTypedData: vi.fn(),
+} as unknown as ClientEvmSigner)
 
 describe('XPayClient', () => {
   beforeEach(() => {
@@ -21,8 +19,14 @@ describe('XPayClient', () => {
     expect(client).toBeInstanceOf(XPayClient)
   })
 
-  it('throws INVALID_SIGNER if signer init fails', async () => {
-    const badSigner = new Signer(() => Promise.reject(new Error('bad')))
+  it('constructs with signer and fetchFn', () => {
+    const fetchFn = vi.fn()
+    const client = new XPayClient({ signer: mockSigner, fetchFn })
+    expect(client).toBeInstanceOf(XPayClient)
+  })
+
+  it('throws INVALID_SIGNER when signer has no address', async () => {
+    const badSigner = new Signer({} as unknown as ClientEvmSigner)
     const client = new XPayClient({ signer: badSigner })
     await expect(client.get('https://example.com/api')).rejects.toThrow(XPayError)
     await expect(client.get('https://example.com/api')).rejects.toMatchObject({ code: 'INVALID_SIGNER' })
@@ -38,7 +42,7 @@ describe('XPayClient', () => {
 
     const client = new XPayClient({ signer: mockSigner })
     const result = await client.get('https://example.com/users')
-    expect(result.ok).toBe(true)
+    expect(result.response.ok).toBe(true)
     expect(result.data).toEqual({ users: [] })
     vi.unstubAllGlobals()
   })
@@ -53,9 +57,9 @@ describe('XPayClient', () => {
 
     const client = new XPayClient({ signer: mockSigner })
     const result = await client.post('https://example.com/users', {
-      body: JSON.stringify({ name: 'test' }),
+      request: { body: JSON.stringify({ name: 'test' }) },
     })
-    expect(result.status).toBe(201)
+    expect(result.response.status).toBe(201)
     expect(result.data).toEqual({ id: 1 })
     vi.unstubAllGlobals()
   })
@@ -70,7 +74,7 @@ describe('XPayClient', () => {
 
     const client = new XPayClient({ signer: mockSigner })
     const result = await client.put('https://example.com/resource/1')
-    expect(result.ok).toBe(true)
+    expect(result.response.ok).toBe(true)
     expect(result.data).toEqual({ updated: true })
     vi.unstubAllGlobals()
   })
@@ -85,12 +89,12 @@ describe('XPayClient', () => {
 
     const client = new XPayClient({ signer: mockSigner })
     const result = await client.delete('https://example.com/resource/1')
-    expect(result.ok).toBe(true)
+    expect(result.response.ok).toBe(true)
     expect(result.data).toEqual({ deleted: true })
     vi.unstubAllGlobals()
   })
 
-  it('detects paymentSettled from header', async () => {
+  it('detects paymentId from header', async () => {
     const headers = new Headers({ 'x-payment-id': 'tx_123' })
     vi.stubGlobal(
       'fetch',
@@ -99,7 +103,7 @@ describe('XPayClient', () => {
 
     const client = new XPayClient({ signer: mockSigner })
     const result = await client.get('https://example.com/paid')
-    expect(result.paymentSettled).toBe(true)
+    expect(result.paymentId).toBe('tx_123')
     vi.unstubAllGlobals()
   })
 
@@ -117,7 +121,7 @@ describe('XPayClient', () => {
     vi.unstubAllGlobals()
   })
 
-  it('throws PAYMENT_FAILED when onBeforePayment aborts', async () => {
+  it('throws HOOK_ABORTED when onBeforePayment aborts', async () => {
     const paymentBody = {
       x402Version: 1,
       accepts: [{
@@ -145,7 +149,7 @@ describe('XPayClient', () => {
           onBeforePayment: () => Promise.resolve({ abort: true, reason: 'not now' }),
         },
       }),
-    ).rejects.toMatchObject({ code: 'PAYMENT_FAILED' })
+    ).rejects.toMatchObject({ code: 'HOOK_ABORTED' })
 
     vi.unstubAllGlobals()
   })
@@ -174,5 +178,30 @@ describe('XPayClient', () => {
     const result = await client.get('https://example.com/raw')
     expect(result.data).toBeNull()
     vi.unstubAllGlobals()
+  })
+
+  it('supports pay() alias for request()', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({}), { status: 200, headers: new Headers() }),
+      ),
+    )
+
+    const client = new XPayClient({ signer: mockSigner })
+    const result = await client.pay('https://example.com/api')
+    expect(result.response.ok).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
+  it('uses custom fetchFn passed to constructor', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ custom: true }), { status: 200, headers: new Headers() }),
+    )
+
+    const client = new XPayClient({ signer: mockSigner, fetchFn })
+    const result = await client.get('https://example.com/api')
+    expect(result.data).toEqual({ custom: true })
+    expect(fetchFn).toHaveBeenCalled()
   })
 })

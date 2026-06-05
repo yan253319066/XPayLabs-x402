@@ -9,5 +9,5 @@ export function fromMnemonic(phrase: string, options?: { chain?: Chain }): Signe
     throw new XPayError(`Unsupported chain: ${chain}`, 'UNSUPPORTED_CHAIN')
   }
   const account = mnemonicToAccount(phrase)
-  return new Signer(() => Promise.resolve(account))
+  return new Signer(account)
 }

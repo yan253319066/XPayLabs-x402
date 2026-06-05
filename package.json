@@ -1,7 +1,7 @@
 {
   "name": "xpaylabs-x402",
   "version": "0.1.0",
-  "description": "Simplify HTTP 402 payments with x402 protocol. Pay APIs with USDC using one line of code.",
+  "description": "Buyer SDK for HTTP 402 payments with USDC. One line to pay any x402-enabled API.",
   "keywords": [
     "x402",
     "http-402",
@@ -15,15 +15,18 @@
     "eip-3009",
     "permit2",
     "micropayments",
-    "pay-per-use"
+    "pay-per-use",
+    "xpaylabs",
+    "xpay",
+    "api-payments"
   ],
-  "homepage": "https://github.com/XPayLabs/xpaylabs-x402#readme",
+  "homepage": "https://github.com/yan253319066/XPayLabs-x402#readme",
   "bugs": {
-    "url": "https://github.com/XPayLabs/xpaylabs-x402/issues"
+    "url": "https://github.com/yan253319066/XPayLabs-x402/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/XPayLabs/xpaylabs-x402.git"
+    "url": "git+https://github.com/yan253319066/XPayLabs-x402.git"
   },
   "license": "MIT",
   "author": "Neil Yan",
@@ -67,6 +70,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
+    "dotenv": "^17.4.2",
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

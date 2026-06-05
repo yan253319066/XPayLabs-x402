@@ -5,9 +5,13 @@ import type { PayOptions, PayResponse } from './types'
 import { XPayError } from './error'
 
 export async function pay<T = any>(url: string, options: PayOptions): Promise<PayResponse<T>> {
+  if (!options.signer.address) {
+    throw new XPayError('Signer address is required', 'INVALID_SIGNER')
+  }
+
   let evmSigner
   try {
-    evmSigner = await options.signer.getClientEvmSigner()
+    evmSigner = options.signer.getClientEvmSigner()
   } catch (err) {
     throw new XPayError(
       `Failed to initialize signer: ${err instanceof Error ? err.message : String(err)}`,
@@ -28,19 +32,20 @@ export async function pay<T = any>(url: string, options: PayOptions): Promise<Pa
       if (!req) return
       const result = await hook({ amount: req.amount, network: req.network })
       if (result?.abort) {
-        throw new XPayError(result.reason ?? 'Payment aborted by onBeforePayment hook', 'PAYMENT_FAILED')
+        throw new XPayError(result.reason ?? 'Payment aborted by onBeforePayment hook', 'HOOK_ABORTED')
       }
     })
   }
 
-  const fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, httpClient)
+  const doFetch = options.fetchFn ?? globalThis.fetch
+  const fetchWithPayment = wrapFetchWithPayment(doFetch, httpClient)
 
   let response: Response
   try {
     response = await fetchWithPayment(url, {
-      method: options.method ?? 'GET',
-      headers: options.headers as Record<string, string>,
-      body: options.body as BodyInit | undefined,
+      method: options.request?.method ?? 'GET',
+      headers: options.request?.headers as Record<string, string>,
+      body: options.request?.body as BodyInit | undefined,
     })
   } catch (err) {
     if (err instanceof XPayError) throw err
@@ -59,10 +64,7 @@ export async function pay<T = any>(url: string, options: PayOptions): Promise<Pa
 
   return {
     data,
-    status: response.status,
-    ok: response.ok,
-    statusText: response.statusText,
-    headers: response.headers,
-    paymentSettled: response.headers.has('x-payment-id'),
+    response,
+    paymentId: response.headers.get('x-payment-id') ?? undefined,
   }
 }

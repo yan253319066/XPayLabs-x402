@@ -9,7 +9,16 @@ describe('XPayError', () => {
   })
 
   it('has all error codes', () => {
-    const codes = ['UNSUPPORTED_CHAIN', 'INVALID_SIGNER', 'PAYMENT_FAILED', 'NETWORK_ERROR'] as const
+    const codes = [
+      'UNSUPPORTED_CHAIN',
+      'INVALID_SIGNER',
+      'PAYMENT_FAILED',
+      'NETWORK_ERROR',
+      'SIGNER_REQUIRED',
+      'CHAIN_NOT_SUPPORTED',
+      'NO_VALID_SCHEME',
+      'HOOK_ABORTED',
+    ] as const
     for (const code of codes) {
       const error = new XPayError(code, code)
       expect(error.code).toBe(code)
