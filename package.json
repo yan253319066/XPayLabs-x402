@@ -1,6 +1,6 @@
 {
   "name": "@xpaylabs/x402",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Buyer SDK for HTTP 402 payments with USDC. One line to pay any x402-enabled API.",
   "keywords": [
     "x402",

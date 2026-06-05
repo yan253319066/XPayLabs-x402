@@ -134,7 +134,8 @@ describe('pay', () => {
   })
 
   it('calls onAfterPayment when x-payment-id header present', async () => {
-    const headers = new Headers({ 'x-payment-id': 'tx_abc' })
+    const settleResponse = { success: true, transaction: 'tx_abc', network: 'eip155:84532' }
+    const headers = new Headers({ 'PAYMENT-RESPONSE': Buffer.from(JSON.stringify(settleResponse)).toString('base64') })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(

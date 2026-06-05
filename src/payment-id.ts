@@ -9,7 +9,10 @@ export function extractPaymentId(
       (name: string) => response.headers.get(name),
     )
     return settleResponse?.transaction ?? undefined
-  } catch {
-    return undefined
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Payment response header not found') {
+      return undefined
+    }
+    throw err
   }
 }

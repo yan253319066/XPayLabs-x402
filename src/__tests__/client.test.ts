@@ -95,7 +95,8 @@ describe('XPayClient', () => {
   })
 
   it('detects paymentId from header', async () => {
-    const headers = new Headers({ 'x-payment-id': 'tx_123' })
+    const settleResponse = { success: true, transaction: 'tx_123', network: 'eip155:84532' }
+    const headers = new Headers({ 'PAYMENT-RESPONSE': Buffer.from(JSON.stringify(settleResponse)).toString('base64') })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200, headers })),
@@ -155,7 +156,8 @@ describe('XPayClient', () => {
   })
 
   it('calls onAfterPayment when header present', async () => {
-    const headers = new Headers({ 'x-payment-id': 'tx_abc' })
+    const settleResponse = { success: true, transaction: 'tx_abc', network: 'eip155:84532' }
+    const headers = new Headers({ 'PAYMENT-RESPONSE': Buffer.from(JSON.stringify(settleResponse)).toString('base64') })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200, headers })),
