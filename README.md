@@ -18,6 +18,24 @@ console.log(result.data)       // JSON response body
 console.log(result.paymentId)  // on-chain tx hash (present = settled)
 ```
 
+## Who Is This For?
+
+| Role | How They Use It |
+|------|----------------|
+| **AI Agents** | Pay for LLM APIs, data sources, and tool executions on the fly — no pre-funded API keys needed |
+| **Node.js Backend Developers** | Call paid third-party APIs without merchant accounts or KYC |
+| **Browser dApp Developers** | Let users pay with MetaMask for premium content or compute |
+| **Automation Scripts** | Pay per-call for scrapers, monitors, and CI/CD pipelines |
+| **SaaS Platforms** | Integrate x402 as a billing layer for your own API marketplace |
+
+## Use Cases
+
+- **AI / LLM**: An agent calls a paid LLM endpoint, pays per-token with USDC, no API key management
+- **Data APIs**: Pay-per-query for financial data, weather, geolocation, or market research APIs
+- **Compute**: Pay per-inference for image generation, video processing, or ML model serving
+- **Content**: Pay-per-view for premium articles, reports, or media files
+- **Infrastructure**: Pay per-request for DNS, CDN, or monitoring APIs
+
 ## Why xpaylabs-x402?
 
 | Problem | xpay solution |
@@ -108,6 +126,16 @@ pay(url, { signer })
     → Returns 200 + x-payment-id
 ```
 
+### Payment Schemes
+
+x402 defines three payment schemes. The SDK supports `exact` and `upto` automatically:
+
+| Scheme | Name | Use Case |
+|--------|------|----------|
+| `exact` | Fixed price | Known-cost API calls, file downloads (EIP-3009, gas sponsored) |
+| `upto` | Usage-based | LLM token generation, bandwidth, compute time (Permit2, pay actual usage) |
+| `batch-settlement` | Batch | High-frequency micropayments (v0.1 not yet supported) |
+
 ## Supported Chains
 
 | Chain | Status | Scheme |
@@ -118,20 +146,61 @@ pay(url, { signer })
 
 ## API Reference
 
-| Function | Description |
-|----------|-------------|
-| `pay(url, opts)` | One-shot payment-enabled HTTP request |
-| `signers.fromPrivateKey(key)` | Create signer from private key |
-| `signers.fromMnemonic(phrase)` | Create signer from mnemonic |
-| `signers.browserWallet(provider)` | Create signer from browser wallet (async) |
-| `new XPayClient({ signer })` | Reusable payment client |
-| `client.pay()` / `.get()` / `.post()` / `.put()` / `.delete()` | REST convenience methods |
+### pay()
+
+```typescript
+async function pay<T = any>(
+  url: string,
+  options: PayOptions,
+): Promise<PayResponse<T>>
+```
+
+### signers
+
+```typescript
+import { signers } from 'xpaylabs-x402'
+
+signers.fromPrivateKey(key: string): Signer
+signers.fromMnemonic(phrase: string, options?: { chain?: Chain }): Signer
+signers.browserWallet(provider: EIP1193Provider): Promise<Signer>
+```
+
+### XPayClient
+
+```typescript
+new XPayClient({ signer, fetchFn?: typeof fetch })
+
+client.pay<T>(url, opts?): Promise<PayResponse<T>>
+client.get<T>(url, opts?): Promise<PayResponse<T>>
+client.post<T>(url, opts?): Promise<PayResponse<T>>
+client.put<T>(url, opts?): Promise<PayResponse<T>>
+client.delete<T>(url, opts?): Promise<PayResponse<T>>
+```
+
+### PayOptions
+
+```typescript
+interface PayOptions {
+  signer: Signer
+  request?: {
+    method?: string
+    headers?: Record<string, string>
+    body?: BodyInit | null
+  }
+  hooks?: {
+    onBeforePayment?: (ctx: { amount: string; network: string }) =>
+      Promise<{ abort?: boolean; reason?: string } | void>
+    onAfterPayment?: (ctx: { transaction?: string }) => Promise<void>
+  }
+  fetchFn?: typeof fetch
+}
+```
 
 ### PayResponse
 
 ```typescript
 {
-  data: T | null,          // JSON response body
+  data: T | null,          // JSON response body (null if not JSON)
   response: Response,      // raw Response object
   paymentId?: string       // on-chain tx hash (present = settled)
 }
@@ -142,7 +211,7 @@ pay(url, { signer })
 | Code | Meaning |
 |------|---------|
 | `INVALID_SIGNER` | Signer has no address |
-| `UNSUPPORTED_CHAIN` | Chain not supported |
+| `UNSUPPORTED_CHAIN` | Chain not supported by the factory |
 | `PAYMENT_FAILED` | Facilitator rejected or on-chain failure |
 | `NETWORK_ERROR` | Network request failed |
 | `HOOK_ABORTED` | Aborted by onBeforePayment hook |
@@ -150,11 +219,53 @@ pay(url, { signer })
 | `CHAIN_NOT_SUPPORTED` | Seller's chain not supported |
 | `NO_VALID_SCHEME` | Seller's payment scheme not supported |
 
+## FAQ
+
+### Do I need to understand the x402 protocol?
+
+No. The SDK handles the 402 handshake, signing, and retry automatically.
+
+### Do I need blockchain experience?
+
+No. `signers.fromPrivateKey()` or `signers.fromMnemonic()` creates a signer in one line.
+
+### Where does the money go?
+
+Buyer signs a USDC transfer → Facilitator verifies and settles on-chain → USDC goes to the seller's wallet. The facilitator is configured by the seller, not the buyer.
+
+### Where is my private key stored?
+
+Never leaves your process.
+
+| Signer | Signing location |
+|--------|-----------------|
+| `fromPrivateKey(key)` | In-process via viem |
+| `fromMnemonic(phrase)` | In-process via viem |
+| `browserWallet(provider)` | Inside the browser wallet (MetaMask prompts user) |
+
+### How do I get testnet USDC?
+
+Use the [CDP Faucet](https://faucet.circle.com/) to get Base Sepolia ETH + USDC.
+
+### What if the API doesn't require payment?
+
+If the server returns 200, the SDK returns the data directly — no payment flow triggered.
+
 ## Requirements
 
 - Node.js >= 18 or modern browser
 - Base Sepolia testnet USDC ([CDP Faucet](https://faucet.circle.com/))
 - An x402-compatible seller API endpoint
+
+## Installation
+
+```bash
+npm install xpaylabs-x402
+# or
+yarn add xpaylabs-x402
+# or
+pnpm add xpaylabs-x402
+```
 
 ## Links
 

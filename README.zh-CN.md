@@ -18,6 +18,24 @@ console.log(result.data)       // 响应数据
 console.log(result.paymentId)  // 链上交易 ID（有则表示已结算）
 ```
 
+## 适用人群
+
+| 角色 | 使用方式 |
+|------|----------|
+| **AI Agent 开发者** | Agent 动态调用付费 LLM、数据源、工具 — 无需预配 API Key |
+| **Node.js 后端开发者** | 无需商户资质或 KYC，直接调用第三方付费 API |
+| **浏览器 dApp 开发者** | 用户通过 MetaMask 为高级功能或计算资源付费 |
+| **自动化脚本开发者** | 爬虫、监控、CI/CD 按次付费调用 |
+| **SaaS 平台** | 将 x402 作为 API 市场计的账层集成 |
+
+## 使用场景
+
+- **AI / LLM**：Agent 调用付费 LLM 端点，按 token 用量用 USDC 结算，无需管理 API Key
+- **数据 API**：金融数据、天气、地理位置、市场研究的按查询付费
+- **计算资源**：图片生成、视频处理、ML 模型推理的按次收费
+- **内容付费**：付费文章、报告、媒体文件的按次查看
+- **基础设施**：DNS、CDN、监控等 API 的按请求付费
+
 ## 为什么用 xpaylabs-x402？
 
 | 痛点 | xpay 方案 |
@@ -108,6 +126,16 @@ pay(url, { signer })
     → 返回 200 + x-payment-id
 ```
 
+### 支付方案
+
+x402 定义了三种支付方案，SDK 自动支持 `exact` 和 `upto`：
+
+| 方案 | 名称 | 适用场景 |
+|------|------|----------|
+| `exact` | 固定价格 | 已知成本的 API 调用、文件下载（EIP-3009，Gas 赞助） |
+| `upto` | 按用量计费 | LLM token、带宽、计算时间（Permit2，按实际扣费） |
+| `batch-settlement` | 批量结算 | 高频微支付（v0.1 暂不支持） |
+
 ## 支持链
 
 | 链 | 状态 | 方案 |
@@ -118,20 +146,61 @@ pay(url, { signer })
 
 ## API 参考
 
-| 函数 | 说明 |
-|----------|-------------|
-| `pay(url, opts)` | 单次支付，自动处理 402 握手 |
-| `signers.fromPrivateKey(key)` | 从私钥创建签名器 |
-| `signers.fromMnemonic(phrase)` | 从助记词创建签名器 |
-| `signers.browserWallet(provider)` | 从浏览器钱包创建签名器（异步） |
-| `new XPayClient({ signer })` | 可复用的支付客户端 |
-| `client.pay()` / `.get()` / `.post()` / `.put()` / `.delete()` | REST 快捷方法 |
+### pay()
+
+```typescript
+async function pay<T = any>(
+  url: string,
+  options: PayOptions,
+): Promise<PayResponse<T>>
+```
+
+### signers
+
+```typescript
+import { signers } from 'xpaylabs-x402'
+
+signers.fromPrivateKey(key: string): Signer
+signers.fromMnemonic(phrase: string, options?: { chain?: Chain }): Signer
+signers.browserWallet(provider: EIP1193Provider): Promise<Signer>
+```
+
+### XPayClient
+
+```typescript
+new XPayClient({ signer, fetchFn?: typeof fetch })
+
+client.pay<T>(url, opts?): Promise<PayResponse<T>>
+client.get<T>(url, opts?): Promise<PayResponse<T>>
+client.post<T>(url, opts?): Promise<PayResponse<T>>
+client.put<T>(url, opts?): Promise<PayResponse<T>>
+client.delete<T>(url, opts?): Promise<PayResponse<T>>
+```
+
+### PayOptions
+
+```typescript
+interface PayOptions {
+  signer: Signer
+  request?: {
+    method?: string
+    headers?: Record<string, string>
+    body?: BodyInit | null
+  }
+  hooks?: {
+    onBeforePayment?: (ctx: { amount: string; network: string }) =>
+      Promise<{ abort?: boolean; reason?: string } | void>
+    onAfterPayment?: (ctx: { transaction?: string }) => Promise<void>
+  }
+  fetchFn?: typeof fetch
+}
+```
 
 ### PayResponse
 
 ```typescript
 {
-  data: T | null,          // JSON 响应体
+  data: T | null,          // JSON 响应体（非 JSON 返回 null）
   response: Response,      // 原始 Response 对象
   paymentId?: string       // 链上交易 hash（有则表示已结算）
 }
@@ -150,11 +219,53 @@ pay(url, { signer })
 | `CHAIN_NOT_SUPPORTED` | 卖家要求的链不支持 |
 | `NO_VALID_SCHEME` | 卖家返回的 scheme 不支持 |
 
+## 常见问题
+
+### 需要理解 x402 协议吗？
+
+不需要。SDK 自动处理 402 握手、签名、重试，开发者只需 `pay(url, { signer })`。
+
+### 需要区块链开发经验吗？
+
+不需要。`signers.fromPrivateKey(key)` 一行创建签名器，剩余流程 SDK 自动完成。
+
+### 钱给了谁？
+
+买家签名授权 USDC → Facilitator 验证上链 → USDC 到卖家钱包。Facilitator 由卖家配置，买家无需关心。
+
+### 私钥安全吗？
+
+| 签名器 | 签名位置 |
+|--------|----------|
+| `fromPrivateKey(key)` | 当前进程内（viem 本地签名） |
+| `fromMnemonic(phrase)` | 当前进程内（viem 本地签名） |
+| `browserWallet(provider)` | 浏览器插件钱包内（MetaMask 弹窗确认） |
+
+私钥**永远不离开**当前进程或钱包。
+
+### 如何获取测试网 USDC？
+
+[CDP Faucet](https://faucet.circle.com/) 领取 Base Sepolia 测试网 ETH + USDC。
+
+### 如果 API 不需要支付怎么办？
+
+服务端返回 200 时，SDK 直接返回数据，不触发支付流程。
+
 ## 环境要求
 
 - Node.js >= 18 或现代浏览器
 - Base Sepolia 测试网 USDC（[CDP Faucet](https://faucet.circle.com/) 领取）
 - 一个 x402 兼容的卖家 API 端点
+
+## 安装
+
+```bash
+npm install xpaylabs-x402
+# 或
+yarn add xpaylabs-x402
+# 或
+pnpm add xpaylabs-x402
+```
 
 ## 链接
 
