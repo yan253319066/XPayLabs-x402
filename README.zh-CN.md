@@ -2,10 +2,46 @@
 
 # @xpaylabs/x402 — HTTP 402 微支付买家 SDK
 
-npm install @xpaylabs/x402
-
 ```javascript
 import { pay, signers } from '@xpaylabs/x402'
+
+const signer = signers.fromPrivateKey(process.env.PRIVATE_KEY)
+const result = await pay('https://api.example.com/paid-endpoint', { signer })
+
+console.log(result.data)       // 响应数据
+console.log(result.paymentId)  // 链上交易 ID（有则表示已结算）
+```
+
+## 适用人群
+
+| 角色 | 使用方式 |
+|------|----------|
+| **AI Agent 开发者** | Agent 动态调用付费 LLM、数据源、工具 — 无需预配 API Key |
+| **Node.js 后端开发者** | 无需商户资质或 KYC，直接调用第三方付费 API |
+| **浏览器 dApp 开发者** | 用户通过 MetaMask 为高级功能或计算资源付费 |
+| **自动化脚本开发者** | 爬虫、监控、CI/CD 按次付费调用 |
+| **SaaS 平台** | 将 x402 作为 API 市场计费层集成 |
+| **IoT / 机器对机器** | 传感器、边缘设备自动为数据中继或算力付费 |
+| **游戏开发者** | 游戏内微支付、道具购买、跳过等待，用户无需 Gas |
+| **内容创作者** | 付费文章、视频、播客 — 按次查看，无订阅捆绑 |
+| **研究者 / 学者** | 按数据集或 API 调用付费，无需走采购流程 |
+| **自由职业者 / 平台工人** | 微任务结算、按小时赚取 USDC，即时到账 |
+
+## 使用场景
+
+- **AI / LLM**：Agent 调用付费 LLM 端点，按 token 用量用 USDC 结算，无需管理 API Key
+- **数据 API**：金融数据、天气、地理位置、市场研究的按查询付费
+- **计算资源**：图片生成、视频处理、ML 模型推理的按次收费
+- **内容付费**：付费文章、报告、媒体文件的按次查看
+- **基础设施**：DNS、CDN、监控等 API 的按请求付费
+- **IoT / DePIN**：传感器数据上传、存储证明、网络带宽的机器对机器微支付
+- **游戏内经济**：购买道具、体力、跳过广告 — 即时链上结算，无需 Gas
+- **Agent 间结算**：AI Agent A 调用 Agent B 的服务，自动 USDC 转账
+- **预测市场**：每条预测投注几美分，链上即时开奖结算
+- **实时数据流**：按秒付费订阅实时价格、交易对、新闻流
+- **API 编排**：一次用户请求背后，自动调用多个付费微 API 并逐一结算
+- **训练数据市场**：每条标注样本付费，买多少付多少
+- **去订阅制内容**：零散阅读，无月费捆绑，按篇付费
 
 ## 为什么用 @xpaylabs/x402？
 
@@ -231,7 +267,7 @@ interface PayOptions {
 ## 安装
 
 ```bash
-npm install xpaylabs-x402
+npm install @xpaylabs/x402
 # 或
 yarn add @xpaylabs/x402
 

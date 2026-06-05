@@ -2,6 +2,47 @@
 
 # @xpaylabs/x402 — Buyer SDK for HTTP 402 Micropayments
 
+```javascript
+import { pay, signers } from '@xpaylabs/x402'
+
+const signer = signers.fromPrivateKey(process.env.PRIVATE_KEY)
+const result = await pay('https://api.example.com/paid-endpoint', { signer })
+
+console.log(result.data)       // response data
+console.log(result.paymentId)  // on-chain tx hash (present = settled)
+```
+
+## Target Audience
+
+| Role | How to Use |
+|------|------------|
+| **AI Agent Developer** | Agents dynamically call paid LLMs, data sources, tools — no API Key provisioning needed |
+| **Node.js Backend Dev** | Call third-party paid APIs without merchant KYC or registration |
+| **Browser dApp Developer** | Users pay through MetaMask for premium features or compute |
+| **Automation Script Dev** | Pay-per-use for crawlers, monitoring, CI/CD pipelines |
+| **SaaS Platform** | Integrate x402 as the billing layer for an API marketplace |
+| **IoT / Machine-to-Machine** | Sensors and edge devices auto-pay for data relay or compute |
+| **Game Developer** | In-game micropayments, items, skips — no gas for users |
+| **Content Creator** | Pay-per-view articles, videos, podcasts — no subscription lock-in |
+| **Researcher / Academic** | Pay-per-dataset or per-API call, skip procurement workflows |
+| **Freelancer / Platform Worker** | Settle micro-tasks, earn USDC by the hour — instant payout |
+
+## Use Cases
+
+- **AI / LLM**: Agent calls paid LLM endpoints, settles USDC by token usage — no API Key management
+- **Data APIs**: Pay-per-query for financial data, weather, geolocation, market research
+- **Compute**: Per-call billing for image generation, video processing, ML inference
+- **Content Paywalls**: Pay-per-view for articles, reports, media files
+- **Infrastructure**: Per-request billing for DNS, CDN, monitoring APIs
+- **IoT / DePIN**: Machine-to-machine micropayments for sensor uploads, storage proofs, bandwidth
+- **In-Game Economy**: Buy items, stamina, skip ads — instant on-chain settlement, no gas
+- **Agent-to-Agent Settlement**: AI Agent A calls Agent B's service, auto-pays in USDC
+- **Prediction Markets**: Wager cents per prediction, on-chain instant settlement
+- **Real-Time Data Streams**: Pay-per-second for live prices, trading pairs, news feeds
+- **API Orchestration**: One user request chains multiple paid micro-APIs, each settled individually
+- **Training Data Marketplace**: Pay per labeled sample, buy exactly what you need
+- **Subscription-Free Content**: No monthly bundles, pay per article you actually read
+
 ## Why @xpaylabs/x402?
 
 | Problem | xpay solution |
@@ -226,7 +267,7 @@ If the server returns 200, the SDK returns the data directly — no payment flow
 ## Installation
 
 ```bash
-npm install xpaylabs-x402
+npm install @xpaylabs/x402
 # or
 yarn add @xpaylabs/x402
 
