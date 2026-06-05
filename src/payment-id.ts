@@ -11,6 +11,7 @@ export function extractPaymentId(
     return settleResponse?.transaction ?? undefined
   } catch (err) {
     if (err instanceof Error && err.message === 'Payment response header not found') {
+      console.debug('[XPay] No x402 payment header found — regular API call, paymentId will be undefined')
       return undefined
     }
     throw err
