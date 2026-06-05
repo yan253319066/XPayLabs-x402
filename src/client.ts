@@ -4,10 +4,12 @@ import { ExactEvmScheme, UptoEvmScheme } from '@x402/evm'
 import type { PayResponse, RequestOptions } from './types'
 import { Signer } from './types'
 import { XPayError } from './error'
+import { extractPaymentId } from './payment-id'
 
 export class XPayClient {
   private evmSigner: ReturnType<Signer['getClientEvmSigner']> | null = null
   private x402: x402Client | null = null
+  private httpClient: x402HTTPClient | null = null
   private baseFetchWithPayment: ReturnType<typeof wrapFetchWithPayment> | null = null
   private initPromise: Promise<void> | null = null
   private signer: Signer
@@ -40,8 +42,8 @@ export class XPayClient {
         .register('eip155:*', new ExactEvmScheme(this.evmSigner!))
         .register('eip155:*', new UptoEvmScheme(this.evmSigner!))
 
-      const httpClient = new x402HTTPClient(this.x402)
-      this.baseFetchWithPayment = wrapFetchWithPayment(this.fetchFn, httpClient)
+      this.httpClient = new x402HTTPClient(this.x402)
+      this.baseFetchWithPayment = wrapFetchWithPayment(this.fetchFn, this.httpClient)
     })()
 
     return this.initPromise
@@ -51,10 +53,11 @@ export class XPayClient {
     await this.ensureInitialized()
 
     let fetchWithPayment = this.baseFetchWithPayment!
+    let settleHttpClient = this.httpClient!
 
     if (options.hooks?.onBeforePayment) {
-      const httpClient = new x402HTTPClient(this.x402!)
-      httpClient.onPaymentRequired(async (ctx) => {
+      settleHttpClient = new x402HTTPClient(this.x402!)
+      settleHttpClient.onPaymentRequired(async (ctx) => {
         const req = ctx.paymentRequired.accepts[0]
         if (!req) return
         const result = await options.hooks!.onBeforePayment!({ amount: req.amount, network: req.network })
@@ -62,7 +65,7 @@ export class XPayClient {
           throw new XPayError(result.reason ?? 'Payment aborted by onBeforePayment hook', 'HOOK_ABORTED')
         }
       })
-      fetchWithPayment = wrapFetchWithPayment(this.fetchFn, httpClient)
+      fetchWithPayment = wrapFetchWithPayment(this.fetchFn, settleHttpClient)
     }
 
     let response: Response
@@ -80,9 +83,10 @@ export class XPayClient {
       )
     }
 
+    const paymentId = extractPaymentId(settleHttpClient, response)
+
     if (options.hooks?.onAfterPayment) {
-      const txId = response.headers.get('x-payment-id') ?? undefined
-      await options.hooks.onAfterPayment({ transaction: txId })
+      await options.hooks.onAfterPayment({ transaction: paymentId })
     }
 
     const data = await response.json().catch(() => null)
@@ -90,7 +94,7 @@ export class XPayClient {
     return {
       data,
       response,
-      paymentId: response.headers.get('x-payment-id') ?? undefined,
+      paymentId,
     }
   }
 
