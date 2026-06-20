@@ -29,7 +29,7 @@
     "url": "git+https://github.com/yan253319066/XPayLabs-x402.git"
   },
   "license": "MIT",
-  "author": "Neil Yan",
+  "author": "XPay Labs",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
