@@ -281,6 +281,11 @@ pnpm add @xpaylabs/x402
 - [GitHub 仓库](https://github.com/yan253319066/XPayLabs-x402)
 - [English Docs](./README.md)
 
+## 仓库
+
+**GitHub:** [yan253319066/XPayLabs-x402](https://github.com/yan253319066/XPayLabs-x402)
+**Gitee（镜像）:** [XPayLabs/XPayLabs-x402](https://gitee.com/XPayLabs/XPayLabs-x402)
+
 ## 许可证
 
 MIT
